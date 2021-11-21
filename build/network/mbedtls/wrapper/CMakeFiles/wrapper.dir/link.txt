@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../../lib/libwrapper.a  CMakeFiles/wrapper.dir/entropy_hardware_alt.c.o CMakeFiles/wrapper.dir/net_sockets_alt.c.o CMakeFiles/wrapper.dir/timing_alt.c.o
+/usr/bin/ranlib ../../../lib/libwrapper.a
