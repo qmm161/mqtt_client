@@ -12,6 +12,7 @@
 #include <pthread.h>
 
 #include <mdm/data_repo.h>
+#include <mdm/macro.h>
 
 #include "mqtt_config.h"
 #include "mqtt_log.h"
@@ -82,6 +83,88 @@ static int mdm_repo_init(char *ws)
     return repo_init(model_path, data_path);
 }
 
+static void msg_handler(void *client, message_data_t *msg)
+{
+    (void)client;
+    MQTT_LOG_I("-----------------------------------------------------------------------------------");
+    MQTT_LOG_I("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
+    MQTT_LOG_I("-----------------------------------------------------------------------------------");
+
+    mqtt_msg *mq_msg = malloc_mqtt_msg(msg->topic_name, (const char *)msg->message->payload);
+    CHECK_DO_RTN(!mq_msg, MQTT_LOG_W("Failed to build mqtt_msg!"));
+
+    int rt = msg_enqueue(mq_msg);
+    if (rt)
+    {
+        MQTT_LOG_W("Failed to enqueue mqtt_msg!");
+        free_mqtt_msg(mq_msg);
+    }
+}
+
+static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type_name, const char *types, const char *def_type)
+{
+    if (types)
+    {
+        size_t len = strlen(types);
+        char *buf = strdup(types);
+        CHECK_DO_RTN_VAL(!buf, MQTT_LOG_W("No memory"), -1);
+
+        char *begin = buf;
+        char *cur = begin;
+        while (cur && begin)
+        {
+            if (*cur == '|')
+            {
+                *cur = '\0';
+                snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
+                MQTT_LOG_I("subscribe topic: %s", buf);
+                mqtt_subscribe(client, buf, QOS0, msg_handler);
+
+                begin = cur + 1;
+            }
+            cur++;
+        }
+
+        if (begin)
+        {
+            snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
+            MQTT_LOG_I("subscribe topic: %s", buf);
+            mqtt_subscribe(client, buf, QOS0, msg_handler);
+        }
+
+        free(buf);
+    }
+
+    snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, def_type);
+    MQTT_LOG_I("subscribe topic: %s", buf);
+    mqtt_subscribe(client, buf, QOS0, msg_handler);
+
+    return 0;
+}
+
+static int subscribe_topics()
+{
+    char buf[512];
+    struct mdd_node *node = NULL;
+
+    int rt = repo_get("Data/DevId", &node);
+    CHECK_DO_RTN_VAL(rt || !node, MQTT_LOG_W("Failed to get devid"), -1);
+    char *devid = str_leaf_val(node);
+    snprintf(buf, 512, "vc100/cmd/%s", devid);
+    MQTT_LOG_I("subscribe topic: %s", buf);
+    mqtt_subscribe(client, buf, QOS0, msg_handler);
+
+    repo_get("Data/Types", &node);
+    rt = mqtt_subscribe_type_topic(buf, 512, "type", node ? str_leaf_val(node) : NULL, "all");
+    CHECK_DO_RTN_VAL(rt, MQTT_LOG_W("Failed to subscribe type topic"), -1);
+
+    repo_get("Data/Areas", &node);
+    rt = mqtt_subscribe_type_topic(buf, 512, "area", node ? str_leaf_val(node) : NULL, "all");
+    CHECK_DO_RTN_VAL(rt, MQTT_LOG_W("Failed to subscribe area topic"), -1);
+
+    return 0;
+}
+
 static int mqtt_client_init()
 {
     client = mqtt_lease();
@@ -106,10 +189,7 @@ static int mqtt_client_init()
 
     mqtt_connect(client);
 
-    mqtt_subscribe(client, "topic1-1", QOS0, topic1_handler);
-    mqtt_subscribe(client, "topic2-1", QOS0, topic2_handler);
-    mqtt_subscribe(client, "topic3-1", QOS2, topic3_handler);
-
+    subscribe_topics();
     return 0;
 }
 
@@ -136,7 +216,12 @@ int main(int argc, char **argv)
 
     while (!quit)
     {
-        //main loop
+        mqtt_msg *msg = msg_dequeue();
+        if (msg)
+        {
+            MQTT_LOG_I("dequeue msg with topic:%s", msg->topic);
+            free_mqtt_msg(msg);
+        }
     }
     return 0;
 }

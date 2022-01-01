@@ -1,0 +1,40 @@
+{
+    "Data": {
+        "@attr": {
+            "mtype": "container"
+        },
+        "Name": {
+            "@attr": {
+                "mtype": "leaf",
+                "dtype": "string"
+            }
+        },
+        "DevId": {
+            "@attr": {
+                "mtype": "leaf",
+                "dtype": "string"
+            }
+        },
+        "Types": {
+            "@attr": {
+                "mtype": "leaf",
+                "dtype": "string"
+            }
+        },
+        "Areas": {
+            "@attr": {
+                "mtype": "leaf",
+                "dtype": "string"
+            }
+        },
+        "Audio": {
+            "@attr": {
+                "mtype": "container"
+            },
+            "Volumn": {
+                "mtype": "leaf",
+                "dtype": "int"
+            }
+        }
+    }
+}
