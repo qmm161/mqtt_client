@@ -199,9 +199,7 @@ static int subscribe_topics()
 
 static int mqtt_client_init()
 {
-    LOG_INFO("enter client init");
     client = mqtt_lease();
-    LOG_INFO("enter client init 1");
     /*
 #ifdef TEST_USEING_TLS
     mqtt_set_port(client, "8883");
@@ -219,19 +217,11 @@ static int mqtt_client_init()
     mqtt_set_host(client, "192.168.1.100");
     mqtt_set_client_id(client, "123456|securemode=3,signmethod=hmacsha1|");
 
-    LOG_INFO("enter client init 2");
-
     mqtt_set_clean_session(client, 1);
 
-    LOG_INFO("enter client init 3");
-
-    //mqtt_connect(client);
-
-    LOG_INFO("enter client init 4");
+    mqtt_connect(client);
 
     subscribe_topics();
-
-    LOG_INFO("enter client init 5");
 
     return 0;
 }
