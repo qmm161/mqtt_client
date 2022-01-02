@@ -103,9 +103,9 @@ mdm_repo_init(char *ws)
     char *model_path[100];
     char *data_path[100];
 
-    strncpy(model_path, sizeof(model_path), ws);
+    strncpy(model_path, ws, 99);
     strncat(model_path, "/model.json", 100 - strlen(model_path) - 1);
-    strncpy(data_path, sizeof(data_path), ws);
+    strncpy(data_path, ws, 99);
     strncat(data_path, "/data.json", 100 - strlen(data_path) - 1);
     return repo_init(model_path, data_path);
 }
