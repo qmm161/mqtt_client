@@ -96,6 +96,8 @@ static int handler_mqtt_msg(mqtt_msg *msg)
         rt = set_data(msg->body);
     }
 
+    free_mqtt_msg(msg);
+
     return rt;
 }
 

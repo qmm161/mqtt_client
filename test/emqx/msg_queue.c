@@ -1,7 +1,7 @@
 #include "msg_queue.h"
 #include "fifo.h"
-#include "mqtt_log.h"
 #include <mdm/macro.h>
+#include <mdm/log.h>
 
 #define MAX_MSG_CNT 20
 #define MSG_QUEUE_TIMEOUT 2
@@ -28,10 +28,10 @@ static int mqtt_msg_is_valid(mqtt_msg *msg)
 mqtt_msg *malloc_mqtt_msg(const char *topic, const char *payload)
 {
     cJSON *body = cJSON_Parse(payload);
-    CHECK_DO_RTN_VAL(!body, MQTT_LOG_W("Failed to parse msg!"), NULL);
+    CHECK_DO_RTN_VAL(!body, LOG_WARN("Failed to parse msg!"), NULL);
 
     mqtt_msg *msg = (mqtt_msg *)calloc(1, sizeof(mqtt_msg));
-    CHECK_DO_RTN_VAL(!msg, MQTT_LOG_W("No memory!"); cJSON_Delete(body), NULL);
+    CHECK_DO_RTN_VAL(!msg, LOG_WARN("No memory!"); cJSON_Delete(body), NULL);
 
     msg->topic = strdup(topic);
     cJSON *child = body->child;
@@ -53,11 +53,11 @@ mqtt_msg *malloc_mqtt_msg(const char *topic, const char *payload)
         child = child->next;
     }
     cJSON_Delete(body);
-    CHECK_DO_GOTO(!mqtt_msg_is_valid(msg), MQTT_LOG_W("Failed to parse msg!"), INVALID_MSG);
+    CHECK_DO_GOTO(!mqtt_msg_is_valid(msg), LOG_WARN("Failed to parse msg!"), INVALID_MSG);
     return msg;
 
 INVALID_MSG:
-    MQTT_LOG_I("Invalid mqtt message");
+    LOG_INFO("Invalid mqtt message");
     free_mqtt_msg(msg);
     return NULL;
 }
@@ -65,22 +65,17 @@ INVALID_MSG:
 int msg_init_queue()
 {
     msg_queue = salof_fifo_create(MAX_MSG_CNT);
-    if (!msg_queue)
-    {
-        MQTT_LOG_I("No memory!");
-        return -1;
-    }
+    CHECK_DO_RTN_VAL(!msg_queue, LOG_WARN("No memory!"), -1);
+
     return 0;
 }
 
 int msg_enqueue(mqtt_msg *msg)
 {
     unsigned int len = salof_fifo_write(msg_queue, (void *)msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
-    if (len == 0)
-    {
-        MQTT_LOG_I("Failed to enqueue msg!");
-        return -1;
-    }
+    CHECK_DO_RTN_VAL(len==0, LOG_WARN("Failed to enqueue msg!"), -1);
+
+    LOG_INFO("Succ to enqueue msg with len: %d - %lld", (int)len, (long long)msg);
     return 0;
 }
 
@@ -88,10 +83,9 @@ mqtt_msg *msg_dequeue()
 {
     mqtt_msg *msg = NULL;
     unsigned int len = salof_fifo_read(msg_queue, &msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
-    if (len == 0)
-    {
-        return NULL;
-    }
+    CHECK_RTN_VAL(len==0, NULL);
+
+    LOG_INFO("Succ to dequeue msg with len: %d - %lld", (int)len, (long long)msg);
     return msg;
 }
 
