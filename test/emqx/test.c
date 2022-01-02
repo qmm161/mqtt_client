@@ -60,8 +60,9 @@ static int play_audio(cJSON *input)
     }
 
     char *cmd = (char *)calloc(1, 250);
-    snprintf(cmd, 250, "/root/play.sh %d %s", int_leaf_val(node), url->valuestring);
+    snprintf(cmd, 250, "/root/play.sh %lld %s", int_leaf_val(node), url->valuestring);
     pthread_create(&tid, NULL, MplayerRtmp, (void *)cmd);
+    return 0;
 }
 
 static int stop_play_audio(cJSON *input)
@@ -69,6 +70,7 @@ static int stop_play_audio(cJSON *input)
     (void)input;
     pthread_cancel(tid);
     system("killall mplayer");
+    return 0;
 }
 
 static int set_data(cJSON *input)
@@ -100,8 +102,8 @@ static int handler_mqtt_msg(mqtt_msg *msg)
 static int
 mdm_repo_init(char *ws)
 {
-    char *model_path[100];
-    char *data_path[100];
+    char model_path[100];
+    char data_path[100];
 
     strncpy(model_path, ws, 99);
     strncat(model_path, "/model.json", 100 - strlen(model_path) - 1);

@@ -32,8 +32,10 @@
                 "mtype": "container"
             },
             "Volumn": {
-                "mtype": "leaf",
-                "dtype": "int"
+                "@attr": {
+                    "mtype": "leaf",
+                    "dtype": "int"
+                }
             }
         }
     }

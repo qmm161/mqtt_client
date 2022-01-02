@@ -70,6 +70,7 @@ int msg_init_queue()
         MQTT_LOG_I("No memory!");
         return -1;
     }
+    return 0;
 }
 
 int msg_enqueue(mqtt_msg *msg)
