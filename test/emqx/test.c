@@ -29,49 +29,76 @@ pthread_t tid;
 static mqtt_client_t *client = NULL;
 static int quit = 0;
 
-void *MplayerRtmp(void *arg)
-{
-    system("/root/play.sh 200 rtmp://192.168.1.100:1935/live/home");
-    pthread_exit(NULL); //可以用
-    return NULL;
-}
-
 //===========================================================================
 // #define TEST_USEING_TLS
 extern const char *test_ca_get();
 
-static void topic1_handler(void *client, message_data_t *msg)
+void *MplayerRtmp(void *arg)
 {
-    (void)client;
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
-    MQTT_LOG_I("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
-
-    pthread_create(&tid, NULL, MplayerRtmp, NULL);
+    char *cmd = (char *)arg;
+    system(cmd);
+    free(cmd);
+    pthread_exit(NULL); //可以用
+    return NULL;
 }
 
-static void topic2_handler(void *client, message_data_t *msg)
+static int play_audio(cJSON *input)
 {
-    (void)client;
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
-    MQTT_LOG_I("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
+    cJSON *url = input->child;
+    if (strcmp("url", url->string))
+    {
+        MQTT_LOG_W("invalid play audio msg.");
+        return -1;
+    }
 
+    struct mdd_node *node = NULL;
+    int rt = repo_get("Data/Audio/Volumn", &node);
+    if (rt)
+    {
+        MQTT_LOG_W("Failed to get volumn para");
+        return rt;
+    }
+
+    char *cmd = (char *)calloc(1, 250);
+    snprintf(cmd, 250, "/root/play.sh %d %s", int_leaf_val(node), url->valuestring);
+    pthread_create(&tid, NULL, MplayerRtmp, (void *)cmd);
+}
+
+static int stop_play_audio(cJSON *input)
+{
+    (void)input;
     pthread_cancel(tid);
     system("killall mplayer");
 }
 
-static void topic3_handler(void *client, message_data_t *msg)
+static int set_data(cJSON *input)
 {
-    (void)client;
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
-    MQTT_LOG_I("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
+    (void)input;
 
-    system("ps");
+    return 0;
 }
 
-static int mdm_repo_init(char *ws)
+static int handler_mqtt_msg(mqtt_msg *msg)
+{
+    int rt = 0;
+    if (!strcmp(msg->msg_name, "PlayAudio"))
+    {
+        rt = play_audio(msg->body);
+    }
+    else if (!strcmp(msg->msg_name, "StopAudio"))
+    {
+        rt = stop_play_audio(msg->body);
+    }
+    else if (!strcmp(msg->msg_name, "Set"))
+    {
+        rt = set_data(msg->body);
+    }
+
+    return rt;
+}
+
+static int
+mdm_repo_init(char *ws)
 {
     char *model_path[100];
     char *data_path[100];
@@ -83,7 +110,7 @@ static int mdm_repo_init(char *ws)
     return repo_init(model_path, data_path);
 }
 
-static void msg_handler(void *client, message_data_t *msg)
+static void msg_receiver(void *client, message_data_t *msg)
 {
     (void)client;
     MQTT_LOG_I("-----------------------------------------------------------------------------------");
@@ -118,7 +145,7 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
                 *cur = '\0';
                 snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
                 MQTT_LOG_I("subscribe topic: %s", buf);
-                mqtt_subscribe(client, buf, QOS0, msg_handler);
+                mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
                 begin = cur + 1;
             }
@@ -129,7 +156,7 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
         {
             snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
             MQTT_LOG_I("subscribe topic: %s", buf);
-            mqtt_subscribe(client, buf, QOS0, msg_handler);
+            mqtt_subscribe(client, buf, QOS0, msg_receiver);
         }
 
         free(buf);
@@ -137,7 +164,7 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
 
     snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, def_type);
     MQTT_LOG_I("subscribe topic: %s", buf);
-    mqtt_subscribe(client, buf, QOS0, msg_handler);
+    mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
     return 0;
 }
@@ -152,7 +179,7 @@ static int subscribe_topics()
     char *devid = str_leaf_val(node);
     snprintf(buf, 512, "vc100/cmd/%s", devid);
     MQTT_LOG_I("subscribe topic: %s", buf);
-    mqtt_subscribe(client, buf, QOS0, msg_handler);
+    mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
     repo_get("Data/Types", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "type", node ? str_leaf_val(node) : NULL, "all");
@@ -220,6 +247,8 @@ int main(int argc, char **argv)
         if (msg)
         {
             MQTT_LOG_I("dequeue msg with topic:%s", msg->topic);
+            rt = handler_mqtt_msg(msg);
+            MQTT_LOG_I("handler mqtt msg rlt:%d", rt);
             free_mqtt_msg(msg);
         }
     }

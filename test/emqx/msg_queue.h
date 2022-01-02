@@ -7,6 +7,8 @@
 typedef struct
 {
     char *topic;
+    char *msg_id;
+    char *msg_name;
     cJSON *body;
 } mqtt_msg;
 
