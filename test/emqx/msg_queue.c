@@ -47,8 +47,8 @@ mqtt_msg *malloc_mqtt_msg(const char *topic, const char *payload)
         }
         else if (!strcmp(child->string, "msg_body"))
         {
-            msg->body = child->child;
-            cJSON_DetachItemViaPointer(child, child->child);
+            msg->body = child;
+            cJSON_DetachItemViaPointer(child, child);
         }
         child = child->next;
     }
