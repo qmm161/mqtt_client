@@ -47,7 +47,7 @@ static int play_audio(cJSON *input)
     cJSON *url = input->child;
     if (strcmp("url", url->string))
     {
-        MQTT_LOG_W("invalid play audio msg.");
+        LOG_WARN("invalid play audio msg.");
         return -1;
     }
 
@@ -55,7 +55,7 @@ static int play_audio(cJSON *input)
     int rt = repo_get("Data/Audio/Volumn", &node);
     if (rt)
     {
-        MQTT_LOG_W("Failed to get volumn para");
+        LOG_WARN("Failed to get volumn para");
         return rt;
     }
 
@@ -115,17 +115,17 @@ mdm_repo_init(char *ws)
 static void msg_receiver(void *client, message_data_t *msg)
 {
     (void)client;
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
-    MQTT_LOG_I("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
-    MQTT_LOG_I("-----------------------------------------------------------------------------------");
+    LOG_INFO("-----------------------------------------------------------------------------------");
+    LOG_INFO("%s:%d %s()...\ntopic: %s\nmessage:%s", __FILE__, __LINE__, __FUNCTION__, msg->topic_name, (char *)msg->message->payload);
+    LOG_INFO("-----------------------------------------------------------------------------------");
 
     mqtt_msg *mq_msg = malloc_mqtt_msg(msg->topic_name, (const char *)msg->message->payload);
-    CHECK_DO_RTN(!mq_msg, MQTT_LOG_W("Failed to build mqtt_msg!"));
+    CHECK_DO_RTN(!mq_msg, LOG_WARN("Failed to build mqtt_msg!"));
 
     int rt = msg_enqueue(mq_msg);
     if (rt)
     {
-        MQTT_LOG_W("Failed to enqueue mqtt_msg!");
+        LOG_WARN("Failed to enqueue mqtt_msg!");
         free_mqtt_msg(mq_msg);
     }
 }
@@ -135,18 +135,21 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
     if (types)
     {
         size_t len = strlen(types);
-        char *buf = strdup(types);
-        CHECK_DO_RTN_VAL(!buf, MQTT_LOG_W("No memory"), -1);
+        char *buf_dup = strdup(types);
+        CHECK_DO_RTN_VAL(!buf_dup, LOG_WARN("No memory"), -1);
 
-        char *begin = buf;
+        LOG_INFO("try sub topics: %s", buf_dup);
+
+        char *begin = buf_dup;
         char *cur = begin;
-        while (cur && begin)
+        while ((*cur != '\0') && (*begin != '\0'))
         {
             if (*cur == '|')
             {
                 *cur = '\0';
+                LOG_INFO("parse topic 1: %s", begin);
                 snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
-                MQTT_LOG_I("subscribe topic: %s", buf);
+                LOG_INFO("subscribe topic: %s", buf);
                 mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
                 begin = cur + 1;
@@ -157,15 +160,15 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
         if (begin)
         {
             snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
-            MQTT_LOG_I("subscribe topic: %s", buf);
+            LOG_INFO("subscribe topic 2: %s", buf);
             mqtt_subscribe(client, buf, QOS0, msg_receiver);
         }
 
-        free(buf);
+        free(buf_dup);
     }
 
     snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, def_type);
-    MQTT_LOG_I("subscribe topic: %s", buf);
+    LOG_INFO("subscribe topic 3: %s", buf);
     mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
     return 0;
@@ -177,26 +180,28 @@ static int subscribe_topics()
     struct mdd_node *node = NULL;
 
     int rt = repo_get("Data/DevId", &node);
-    CHECK_DO_RTN_VAL(rt || !node, MQTT_LOG_W("Failed to get devid"), -1);
+    CHECK_DO_RTN_VAL(rt || !node, LOG_WARN("Failed to get devid"), -1);
     char *devid = str_leaf_val(node);
     snprintf(buf, 512, "vc100/cmd/%s", devid);
-    MQTT_LOG_I("subscribe topic: %s", buf);
+    LOG_INFO("subscribe topic: %s", buf);
     mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
     repo_get("Data/Types", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "type", node ? str_leaf_val(node) : NULL, "all");
-    CHECK_DO_RTN_VAL(rt, MQTT_LOG_W("Failed to subscribe type topic"), -1);
+    CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe type topic"), -1);
 
     repo_get("Data/Areas", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "area", node ? str_leaf_val(node) : NULL, "all");
-    CHECK_DO_RTN_VAL(rt, MQTT_LOG_W("Failed to subscribe area topic"), -1);
+    CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe area topic"), -1);
 
     return 0;
 }
 
 static int mqtt_client_init()
 {
+    LOG_INFO("enter client init");
     client = mqtt_lease();
+    LOG_INFO("enter client init 1");
     /*
 #ifdef TEST_USEING_TLS
     mqtt_set_port(client, "8883");
@@ -214,11 +219,20 @@ static int mqtt_client_init()
     mqtt_set_host(client, "192.168.1.100");
     mqtt_set_client_id(client, "123456|securemode=3,signmethod=hmacsha1|");
 
+    LOG_INFO("enter client init 2");
+
     mqtt_set_clean_session(client, 1);
 
-    mqtt_connect(client);
+    LOG_INFO("enter client init 3");
+
+    //mqtt_connect(client);
+
+    LOG_INFO("enter client init 4");
 
     subscribe_topics();
+
+    LOG_INFO("enter client init 5");
+
     return 0;
 }
 
@@ -228,29 +242,29 @@ int main(int argc, char **argv)
 
     if (argc < 2)
     {
-        MQTT_LOG_W("Lack para: repo dir!");
+        LOG_WARN("Lack para: repo dir!");
         return 0;
     }
 
-    MQTT_LOG_I("\nwelcome to mqttclient test...\n");
+    LOG_INFO("\nwelcome to mqttclient test...\n");
 
     int rt = msg_init_queue();
-    MQTT_LOG_I("init msg queue with rlt:%d", rt);
+    LOG_INFO("init msg queue with rlt:%d", rt);
 
     rt = mdm_repo_init(argv[1]);
-    MQTT_LOG_I("init repo with rlt:%d", rt);
+    LOG_INFO("init repo with rlt:%d", rt);
 
     rt = mqtt_client_init();
-    MQTT_LOG_I("init mqtt client rlt:%d", rt);
+    LOG_INFO("init mqtt client rlt:%d", rt);
 
     while (!quit)
     {
         mqtt_msg *msg = msg_dequeue();
         if (msg)
         {
-            MQTT_LOG_I("dequeue msg with topic:%s", msg->topic);
+            LOG_INFO("dequeue msg with topic:%s", msg->topic);
             rt = handler_mqtt_msg(msg);
-            MQTT_LOG_I("handler mqtt msg rlt:%d", rt);
+            LOG_INFO("handler mqtt msg rlt:%d", rt);
             free_mqtt_msg(msg);
         }
     }
