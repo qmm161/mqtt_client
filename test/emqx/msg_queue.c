@@ -72,7 +72,7 @@ int msg_init_queue()
 
 int msg_enqueue(mqtt_msg *msg)
 {
-    unsigned int len = salof_fifo_write(msg_queue, (void *)msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
+    unsigned int len = salof_fifo_write(msg_queue, (void *)&msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
     CHECK_DO_RTN_VAL(len==0, LOG_WARN("Failed to enqueue msg!"), -1);
 
     LOG_INFO("Succ to enqueue msg with len: %d - %lld", (int)len, (long long)msg);
