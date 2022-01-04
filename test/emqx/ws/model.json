@@ -37,6 +37,23 @@
                     "dtype": "int"
                 }
             }
+        },
+        "Server": {
+            "@attr": {
+                "mtype": "container"
+            },
+            "Ip": {
+                "@attr": {
+                    "mtype": "leaf",
+                    "dtype": "string"
+                }
+            },
+            "Port": {
+                "@attr": {
+                    "mtype": "leaf",
+                    "dtype": "int"
+                }
+            }
         }
     }
 }

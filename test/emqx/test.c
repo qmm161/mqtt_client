@@ -75,8 +75,14 @@ static int stop_play_audio(cJSON *input)
 
 static int set_data(cJSON *input)
 {
-    (void)input;
+    int rt = repo_edit_json(input);
+    LOG_WARN("try edit data with rlt:%d", rt);
+    return 0;
+}
 
+static int get_data(cJSON *input)
+{
+    (void)input;
     return 0;
 }
 
@@ -94,6 +100,10 @@ static int handler_mqtt_msg(mqtt_msg *msg)
     else if (!strcmp(msg->msg_name, "Set"))
     {
         rt = set_data(msg->body);
+    }
+    else if (!strcmp(msg->msg_name, "Get"))
+    {
+        rt = get_data(msg->body);
     }
 
     free_mqtt_msg(msg);
@@ -149,7 +159,6 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
             if (*cur == '|')
             {
                 *cur = '\0';
-                LOG_INFO("parse topic 1: %s", begin);
                 snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
                 LOG_INFO("subscribe topic: %s", buf);
                 mqtt_subscribe(client, buf, QOS0, msg_receiver);
@@ -162,7 +171,7 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
         if (begin)
         {
             snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, begin);
-            LOG_INFO("subscribe topic 2: %s", buf);
+            LOG_INFO("subscribe topic: %s", buf);
             mqtt_subscribe(client, buf, QOS0, msg_receiver);
         }
 
@@ -170,7 +179,7 @@ static int mqtt_subscribe_type_topic(char *buf, size_t buf_len, const char *type
     }
 
     snprintf(buf, buf_len, "vc100/bcast/%s/%s", type_name, def_type);
-    LOG_INFO("subscribe topic 3: %s", buf);
+    LOG_INFO("subscribe topic: %s", buf);
     mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
     return 0;
@@ -215,10 +224,20 @@ static int mqtt_client_init()
     mqtt_set_user_name(client, random_string(10));
     mqtt_set_password(client, random_string(10));
 	*/
-    mqtt_set_port(client, "1883");
-    mqtt_set_host(client, "192.168.1.100");
-    mqtt_set_client_id(client, "123456|securemode=3,signmethod=hmacsha1|");
 
+    struct mdd_node *node = NULL;
+    int rt = repo_get("Data/Server/Ip", &node);
+    CHECK_DO_RTN_VAL(rt || !node, LOG_WARN("Failed to get Ip"), -1);
+    char *ip = str_leaf_val(node);
+    mqtt_set_host(client, ip);
+
+    rt = repo_get("Data/Server/Port", &node);
+    CHECK_DO_RTN_VAL(rt || !node, LOG_WARN("Failed to get Port"), -1);
+    char port[20];
+    snprintf(port, 20, "%lld", int_leaf_val(node));
+    mqtt_set_port(client, port);
+
+    mqtt_set_client_id(client, "123456|securemode=3,signmethod=hmacsha1|");
     mqtt_set_clean_session(client, 1);
 
     mqtt_connect(client);
