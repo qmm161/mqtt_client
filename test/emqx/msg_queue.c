@@ -48,7 +48,7 @@ mqtt_msg *malloc_mqtt_msg(const char *topic, const char *payload)
         else if (!strcmp(child->string, "msg_body"))
         {
             msg->body = child;
-            cJSON_DetachItemViaPointer(child, child);
+            cJSON_DetachItemViaPointer(body, child);
         }
         child = child->next;
     }
@@ -73,7 +73,7 @@ int msg_init_queue()
 int msg_enqueue(mqtt_msg *msg)
 {
     unsigned int len = salof_fifo_write(msg_queue, (void *)&msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
-    CHECK_DO_RTN_VAL(len==0, LOG_WARN("Failed to enqueue msg!"), -1);
+    CHECK_DO_RTN_VAL(len == 0, LOG_WARN("Failed to enqueue msg!"), -1);
 
     LOG_INFO("Succ to enqueue msg with len: %d - %lld", (int)len, (long long)msg);
     return 0;
@@ -83,7 +83,7 @@ mqtt_msg *msg_dequeue()
 {
     mqtt_msg *msg = NULL;
     unsigned int len = salof_fifo_read(msg_queue, &msg, sizeof(mqtt_msg *), MSG_QUEUE_TIMEOUT);
-    CHECK_RTN_VAL(len==0, NULL);
+    CHECK_RTN_VAL(len == 0, NULL);
 
     LOG_INFO("Succ to dequeue msg with len: %d - %lld", (int)len, (long long)msg);
     return msg;
