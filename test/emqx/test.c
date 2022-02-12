@@ -36,7 +36,8 @@ extern const char *test_ca_get();
 void *MplayerRtmp(void *arg)
 {
     char *cmd = (char *)arg;
-    system(cmd);
+    LOG_WARN("try to play:%s.", cmd);
+    //system(cmd);
     free(cmd);
     pthread_exit(NULL); //可以用
     return NULL;
@@ -69,7 +70,7 @@ static int stop_play_audio(cJSON *input)
 {
     (void)input;
     pthread_cancel(tid);
-    system("killall mplayer");
+    //system("killall mplayer");
     return 0;
 }
 
@@ -105,8 +106,6 @@ static int handler_mqtt_msg(mqtt_msg *msg)
     {
         rt = get_data(msg->body);
     }
-
-    free_mqtt_msg(msg);
 
     return rt;
 }
@@ -197,6 +196,7 @@ static int subscribe_topics()
     LOG_INFO("subscribe topic: %s", buf);
     mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
+#if 0
     repo_get("Data/Types", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "type", node ? str_leaf_val(node) : NULL, "all");
     CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe type topic"), -1);
@@ -204,7 +204,7 @@ static int subscribe_topics()
     repo_get("Data/Areas", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "area", node ? str_leaf_val(node) : NULL, "all");
     CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe area topic"), -1);
-
+#endif
     return 0;
 }
 
@@ -229,12 +229,14 @@ static int mqtt_client_init()
     int rt = repo_get("Data/Server/Ip", &node);
     CHECK_DO_RTN_VAL(rt || !node, LOG_WARN("Failed to get Ip"), -1);
     char *ip = str_leaf_val(node);
+    LOG_INFO("Set host ip:%s", ip);
     mqtt_set_host(client, ip);
 
     rt = repo_get("Data/Server/Port", &node);
     CHECK_DO_RTN_VAL(rt || !node, LOG_WARN("Failed to get Port"), -1);
     char port[20];
     snprintf(port, 20, "%lld", int_leaf_val(node));
+    LOG_INFO("Set host port:%s", port);
     mqtt_set_port(client, port);
 
     mqtt_set_client_id(client, "123456|securemode=3,signmethod=hmacsha1|");
