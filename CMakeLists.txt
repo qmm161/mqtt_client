@@ -14,8 +14,8 @@ set(EXECUTABLE_OUTPUT_PATH "${PROJECT_ROOT_PATH}/${OUTDIRS}/bin/")
 set(CMAKE_BUILD_TYPE "Release")   # Debug Release
 set(CMAKE_LIB_TYPE "STATIC")   # SHARED STATIC
 
-# set(CMAKE_C_COMPILER "gcc")
-# set(CMAKE_CXX_COMPILER "g++" )
+set(CMAKE_C_COMPILER "/Library/Developer/CommandLineTools/usr/bin/gcc")
+set(CMAKE_CXX_COMPILER "/Library/Developer/CommandLineTools/usr/bin/g++")
 
 set(CMAKE_C_FLAGS "-Wall")
 set(CMAKE_C_FLAGS "-lpthread")

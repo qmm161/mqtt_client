@@ -48,10 +48,10 @@ mqtt_msg *malloc_mqtt_msg(const char *topic, const char *payload)
         else if (!strcmp(child->string, "msg_body"))
         {
             msg->body = child;
-            cJSON_DetachItemViaPointer(body, child);
         }
         child = child->next;
     }
+    cJSON_DetachItemViaPointer(body, msg->body);
     cJSON_Delete(body);
     CHECK_DO_GOTO(!mqtt_msg_is_valid(msg), LOG_WARN("Failed to parse msg!"), INVALID_MSG);
     return msg;

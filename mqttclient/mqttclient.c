@@ -434,7 +434,7 @@ static message_handlers_t *mqtt_msg_handler_create(const char* topic_filter, mqt
     
     msg_handler->qos = qos;
     msg_handler->handler = handler;     /* register  callback handler */
-    msg_handler->topic_filter = topic_filter;
+    msg_handler->topic_filter = strdup(topic_filter);
 
     return msg_handler;
 }
@@ -443,6 +443,7 @@ static void mqtt_msg_handler_destory(message_handlers_t *msg_handler)
 {
     if (NULL != &msg_handler->list) {
         mqtt_list_del(&msg_handler->list);
+        free(msg_handler->topic_filter);
         platform_memory_free(msg_handler);
     }
 }
