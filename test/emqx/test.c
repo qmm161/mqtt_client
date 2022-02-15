@@ -69,6 +69,7 @@ static int play_audio(cJSON *input)
 static int stop_play_audio(cJSON *input)
 {
     (void)input;
+    LOG_WARN("try to stop play.");
     pthread_cancel(tid);
     //system("killall mplayer");
     return 0;
@@ -196,7 +197,6 @@ static int subscribe_topics()
     LOG_INFO("subscribe topic: %s", buf);
     mqtt_subscribe(client, buf, QOS0, msg_receiver);
 
-#if 0
     repo_get("Data/Types", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "type", node ? str_leaf_val(node) : NULL, "all");
     CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe type topic"), -1);
@@ -204,7 +204,7 @@ static int subscribe_topics()
     repo_get("Data/Areas", &node);
     rt = mqtt_subscribe_type_topic(buf, 512, "area", node ? str_leaf_val(node) : NULL, "all");
     CHECK_DO_RTN_VAL(rt, LOG_WARN("Failed to subscribe area topic"), -1);
-#endif
+
     return 0;
 }
 
